@@ -1,7 +1,7 @@
 # Python
 
 ```bash
-cd jina
+cd py
 uv run main.py
 ```
 

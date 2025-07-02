@@ -34,7 +34,7 @@ func main() {
 	outputTensor, err := ort.NewEmptyTensor[float32](outputShape)
 	defer outputTensor.Destroy()
 
-	model := "jina/model/model.onnx"
+	model := "py/model/model.onnx"
 	session, err := ort.NewAdvancedSession(model,
 		[]string{"Input 1 Name"}, []string{"Output 1 Name"},
 		[]ort.Value{inputTensor}, []ort.Value{outputTensor}, nil)
