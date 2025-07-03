@@ -58,16 +58,15 @@ func main() {
 	}
 	defer ort.DestroyEnvironment()
 
-	// Simple tokenization - manually create tokens for "This is a orange"
-	// In practice, you'd need proper tokenization
+	// Use exact same tokenization as Python
 	batchSize := 1
-	seqLen := 6
+	seqLen := 7
 	embedDim := 1024
 	
-	// Mock tokenized input (you'd need real tokenization)
-	inputIds := []int64{1, 2023, 318, 257, 10912, 2}  // Example token IDs
-	attentionMask := []int64{1, 1, 1, 1, 1, 1}        // All tokens are real
-	taskId := []int64{0}                               // Task ID for text-matching
+	// Exact same tokens from Python tokenizer
+	inputIds := []int64{0, 3293, 83, 10, 1482, 13, 2}  // "This is a orange"
+	attentionMask := []int64{1, 1, 1, 1, 1, 1, 1}      // All tokens are real
+	taskId := []int64{4}                                // Task ID for text-matching
 	
 	// Create input tensors
 	inputIdsShape := ort.NewShape(int64(batchSize), int64(seqLen))

@@ -41,4 +41,5 @@ embeddings = mean_pooling(outputs, input_text["attention_mask"])
 embeddings = embeddings / np.linalg.norm(embeddings, ord=2, axis=1, keepdims=True)
 
 print(embeddings.shape)  # Output shape
+print("First 10 values:", embeddings[0][:10])
 
