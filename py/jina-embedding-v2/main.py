@@ -12,8 +12,8 @@ def mean_pooling(model_output: np.ndarray, attention_mask: np.ndarray):
     return sum_embeddings / sum_mask
 
 # Load tokenizer and model config
-tokenizer = AutoTokenizer.from_pretrained('jinaai/jina-embeddings-v3')
-config = PretrainedConfig.from_pretrained('jinaai/jina-embeddings-v3')
+tokenizer = AutoTokenizer.from_pretrained('jinaai/jina-embeddings-v2-base-en')
+config = PretrainedConfig.from_pretrained('jinaai/jina-embeddings-v2-base-en')
 
 # Tokenize input
 input_text = tokenizer('This is an apple', return_tensors='np')
@@ -22,13 +22,14 @@ input_text = tokenizer('This is an apple', return_tensors='np')
 model_path = 'model/model.onnx'
 session = onnxruntime.InferenceSession(model_path)
 
+# Check model inputs
+print("Model inputs:", [input.name for input in session.get_inputs()])
+
 # Prepare inputs for ONNX model
-task_type = 'text-matching'
-task_id = np.array(config.lora_adaptations.index(task_type), dtype=np.int64)
 inputs = {
     'input_ids': input_text['input_ids'],
     'attention_mask': input_text['attention_mask'],
-    'task_id': task_id
+    'token_type_ids': input_text.get('token_type_ids', np.zeros_like(input_text['input_ids']))
 }
 
 # Run model
