@@ -2,13 +2,13 @@ package main
 
 import (
 	"fmt"
-	"math"
 	ort "github.com/yalue/onnxruntime_go"
+	"math"
 )
 
 func meanPooling(modelOutput []float32, attentionMask []int64, batchSize, seqLen, embedDim int) []float32 {
 	result := make([]float32, batchSize*embedDim)
-	
+
 	for b := 0; b < batchSize; b++ {
 		var sumMask float32
 		for i := 0; i < embedDim; i++ {
@@ -32,7 +32,7 @@ func meanPooling(modelOutput []float32, attentionMask []int64, batchSize, seqLen
 
 func l2Normalize(embeddings []float32, batchSize, embedDim int) []float32 {
 	result := make([]float32, len(embeddings))
-	
+
 	for b := 0; b < batchSize; b++ {
 		var norm float32
 		for i := 0; i < embedDim; i++ {
@@ -40,7 +40,7 @@ func l2Normalize(embeddings []float32, batchSize, embedDim int) []float32 {
 			norm += val * val
 		}
 		norm = float32(math.Sqrt(float64(norm)))
-		
+
 		for i := 0; i < embedDim; i++ {
 			result[b*embedDim+i] = embeddings[b*embedDim+i] / norm
 		}
@@ -58,16 +58,35 @@ func main() {
 	}
 	defer ort.DestroyEnvironment()
 
-	// Use exact same tokenization as Python
+	// Initialize tokenizer
+	tokenizer := NewTokenizer()
+	err = tokenizer.LoadFromHuggingFace("jinaai/jina-embeddings-v3")
+	if err != nil {
+		panic(fmt.Errorf("failed to load tokenizer: %v", err))
+	}
+
+	// Tokenize input text dynamically
+	inputText := "This is a orange"
+	inputIds, attentionMask := tokenizer.Encode(inputText)
+
+	// Get task ID dynamically
+	taskType := "text-matching"
+	taskIdValue, err := tokenizer.GetTaskID(taskType)
+	if err != nil {
+		panic(fmt.Errorf("failed to get task ID: %v", err))
+	}
+	taskId := []int64{taskIdValue}
+
+	// Dynamic dimensions based on tokenization
 	batchSize := 1
-	seqLen := 7
+	seqLen := len(inputIds)
 	embedDim := 1024
-	
-	// Exact same tokens from Python tokenizer
-	inputIds := []int64{0, 3293, 83, 10, 1482, 13, 2}  // "This is a orange"
-	attentionMask := []int64{1, 1, 1, 1, 1, 1, 1}      // All tokens are real
-	taskId := []int64{4}                                // Task ID for text-matching
-	
+
+	fmt.Printf("Input text: %s\n", inputText)
+	fmt.Printf("Input IDs: %v\n", inputIds)
+	fmt.Printf("Attention mask: %v\n", attentionMask)
+	fmt.Printf("Task ID: %v\n", taskId)
+
 	// Create input tensors
 	inputIdsShape := ort.NewShape(int64(batchSize), int64(seqLen))
 	inputIdsTensor, err := ort.NewTensor(inputIdsShape, inputIds)
@@ -75,21 +94,21 @@ func main() {
 		panic(err)
 	}
 	defer inputIdsTensor.Destroy()
-	
+
 	attentionMaskShape := ort.NewShape(int64(batchSize), int64(seqLen))
 	attentionMaskTensor, err := ort.NewTensor(attentionMaskShape, attentionMask)
 	if err != nil {
 		panic(err)
 	}
 	defer attentionMaskTensor.Destroy()
-	
+
 	taskIdShape := ort.NewShape(1)
 	taskIdTensor, err := ort.NewTensor(taskIdShape, taskId)
 	if err != nil {
 		panic(err)
 	}
 	defer taskIdTensor.Destroy()
-	
+
 	// Create output tensor
 	outputShape := ort.NewShape(int64(batchSize), int64(seqLen), int64(embedDim))
 	outputTensor, err := ort.NewEmptyTensor[float32](outputShape)
@@ -100,9 +119,9 @@ func main() {
 
 	model := "py/model/model.onnx"
 	session, err := ort.NewAdvancedSession(model,
-		[]string{"input_ids", "attention_mask", "task_id"}, 
+		[]string{"input_ids", "attention_mask", "task_id"},
 		[]string{"text_embeds"},
-		[]ort.Value{inputIdsTensor, attentionMaskTensor, taskIdTensor}, 
+		[]ort.Value{inputIdsTensor, attentionMaskTensor, taskIdTensor},
 		[]ort.Value{outputTensor}, nil)
 	if err != nil {
 		panic(err)
@@ -116,13 +135,13 @@ func main() {
 
 	// Get model output
 	rawOutput := outputTensor.GetData()
-	
+
 	// Apply mean pooling
 	pooledEmbeddings := meanPooling(rawOutput, attentionMask, batchSize, seqLen, embedDim)
-	
+
 	// Apply L2 normalization
 	finalEmbeddings := l2Normalize(pooledEmbeddings, batchSize, embedDim)
-	
+
 	fmt.Printf("Final embeddings shape: [%d, %d]\n", batchSize, embedDim)
 	fmt.Printf("First 10 values: %v\n", finalEmbeddings[:10])
 }
