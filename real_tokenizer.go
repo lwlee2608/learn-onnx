@@ -12,6 +12,11 @@ import (
 	"unicode"
 )
 
+// ModelConfig represents the model configuration
+type ModelConfig struct {
+	LoraAdaptations []string `json:"lora_adaptations"`
+}
+
 // SentencePieceTokenizer represents a proper XLM-RoBERTa tokenizer
 type SentencePieceTokenizer struct {
 	vocab         map[string]int
