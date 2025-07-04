@@ -117,7 +117,7 @@ func main() {
 	}
 	defer outputTensor.Destroy()
 
-	model := "../py/jina-embedding-v3/model/model.onnx"
+	model := "py/model/model.onnx"
 	session, err := ort.NewAdvancedSession(model,
 		[]string{"input_ids", "attention_mask", "task_id"},
 		[]string{"text_embeds"},

@@ -68,8 +68,14 @@ func main() {
 	// Tokenize input text dynamically
 	inputText := "This is an apple"
 	inputIds, attentionMask := tokenizer.Encode(inputText)
+	
+	// Create token type IDs (all zeros for single sequence)
+	tokenTypeIds := make([]int64, len(inputIds))
+	for i := range tokenTypeIds {
+		tokenTypeIds[i] = 0
+	}
 
-	// Get task ID dynamically
+	// Get task ID dynamically (not used in this model)
 	taskType := "text-matching"
 	taskIdValue, err := tokenizer.GetTaskID(taskType)
 	if err != nil {
@@ -80,7 +86,7 @@ func main() {
 	// Dynamic dimensions based on tokenization
 	batchSize := 1
 	seqLen := len(inputIds)
-	embedDim := 1024
+	embedDim := 768
 
 	fmt.Printf("\nRunning model inference:\n")
 	fmt.Printf("Input: %s\n", inputText)
@@ -102,12 +108,19 @@ func main() {
 	}
 	defer attentionMaskTensor.Destroy()
 
-	taskIdShape := ort.NewShape(1)
-	taskIdTensor, err := ort.NewTensor(taskIdShape, taskId)
+	tokenTypeIdsShape := ort.NewShape(int64(batchSize), int64(seqLen))
+	tokenTypeIdsTensor, err := ort.NewTensor(tokenTypeIdsShape, tokenTypeIds)
 	if err != nil {
 		panic(err)
 	}
-	defer taskIdTensor.Destroy()
+	defer tokenTypeIdsTensor.Destroy()
+
+	// taskIdShape := ort.NewShape(1)
+	// taskIdTensor, err := ort.NewTensor(taskIdShape, taskId)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// defer taskIdTensor.Destroy()
 
 	// Create output tensor
 	outputShape := ort.NewShape(int64(batchSize), int64(seqLen), int64(embedDim))
@@ -117,11 +130,11 @@ func main() {
 	}
 	defer outputTensor.Destroy()
 
-	model := "../py/jina-embedding-v2/model/model.onnx"
+	model := "py/model/model.onnx"
 	session, err := ort.NewAdvancedSession(model,
-		[]string{"input_ids", "attention_mask", "task_id"},
-		[]string{"text_embeds"},
-		[]ort.Value{inputIdsTensor, attentionMaskTensor, taskIdTensor},
+		[]string{"input_ids", "attention_mask", "token_type_ids"},
+		[]string{"last_hidden_state"},
+		[]ort.Value{inputIdsTensor, attentionMaskTensor, tokenTypeIdsTensor},
 		[]ort.Value{outputTensor}, nil)
 	if err != nil {
 		panic(err)
