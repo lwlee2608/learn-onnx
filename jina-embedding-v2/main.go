@@ -4,6 +4,8 @@ import (
 	"fmt"
 	ort "github.com/yalue/onnxruntime_go"
 	"math"
+	"os"
+	"runtime"
 	"time"
 )
 
@@ -50,7 +52,19 @@ func l2Normalize(embeddings []float32, batchSize, embedDim int) []float32 {
 }
 
 func main() {
-	lib := "/usr/local/lib/onnxruntime/lib/libonnxruntime.so"
+	var lib string
+	if runtime.GOOS == "darwin" {
+		lib = "./onnxruntime-osx-arm64-1.22.0/lib/libonnxruntime.dylib"
+	} else {
+		lib = "/usr/local/lib/onnxruntime/lib/libonnxruntime.so"
+	}
+	
+	// Allow override via environment variable
+	if envLib := os.Getenv("ONNXRUNTIME_LIB_PATH"); envLib != "" {
+		lib = envLib
+	}
+	
+	fmt.Printf("Using ONNX Runtime library: %s\n", lib)
 	ort.SetSharedLibraryPath(lib)
 
 	err := ort.InitializeEnvironment()
@@ -75,12 +89,12 @@ func main() {
 
 	// Start timing from tokenization
 	startTime := time.Now()
-	
+
 	// Tokenize input text dynamically
 	tokenizerStart := time.Now()
 	inputIds, attentionMask := tokenizer.Encode(inputText)
 	tokenizerTime := time.Since(tokenizerStart)
-	
+
 	// Create token type IDs (all zeros for single sequence)
 	tokenTypeIds := make([]int64, len(inputIds))
 	for i := range tokenTypeIds {
@@ -152,7 +166,7 @@ func main() {
 		panic(err)
 	}
 	inferenceTime := time.Since(inferenceStart)
-	
+
 	// Record total time including tokenization and inference
 	totalTime := time.Since(startTime)
 	fmt.Printf("Tokenizer time: %v\n", tokenizerTime)
