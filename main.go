@@ -4,7 +4,6 @@ import (
 	"fmt"
 	ort "github.com/yalue/onnxruntime_go"
 	"math"
-	"strings"
 )
 
 func meanPooling(modelOutput []float32, attentionMask []int64, batchSize, seqLen, embedDim int) []float32 {
@@ -66,25 +65,8 @@ func main() {
 		panic(fmt.Errorf("failed to load tokenizer: %v", err))
 	}
 
-	// Test with different texts to show dynamic tokenization
-	testTexts := []string{
-		"This is an apple",
-		"Hello world!",
-		"机器学习很有趣",
-		"The quick brown fox jumps over the lazy dog",
-		"🚀 Tokenization is working!",
-	}
-
-	for _, text := range testTexts {
-		fmt.Printf("\n" + strings.Repeat("=", 60) + "\n")
-		fmt.Printf("Testing text: %s\n", text)
-		ids, _ := tokenizer.Encode(text)
-		fmt.Printf("Final result - IDs: %v\n", ids)
-		fmt.Printf("Decoded: %s\n", tokenizer.DecodeIds(ids))
-	}
-
-	// Use the first text for the model
-	inputText := testTexts[0]
+	// Tokenize input text dynamically
+	inputText := "This is an apple"
 	inputIds, attentionMask := tokenizer.Encode(inputText)
 
 	// Get task ID dynamically
@@ -95,17 +77,14 @@ func main() {
 	}
 	taskId := []int64{taskIdValue}
 
-	// Test decoding
-	fmt.Printf("Decoded text: %s\n", tokenizer.DecodeIds(inputIds))
-
 	// Dynamic dimensions based on tokenization
 	batchSize := 1
 	seqLen := len(inputIds)
 	embedDim := 1024
 
-	fmt.Printf("Input text: %s\n", inputText)
-	fmt.Printf("Input IDs: %v\n", inputIds)
-	fmt.Printf("Attention mask: %v\n", attentionMask)
+	fmt.Printf("\nRunning model inference:\n")
+	fmt.Printf("Input: %s\n", inputText)
+	fmt.Printf("Token IDs: %v\n", inputIds)
 	fmt.Printf("Task ID: %v\n", taskId)
 
 	// Create input tensors

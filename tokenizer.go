@@ -21,14 +21,11 @@ type ModelConfig struct {
 type SentencePieceTokenizer struct {
 	vocab         map[string]int
 	vocabReverse  map[int]string
-	merges        [][]string
 	specialTokens map[string]int
 	config        *ModelConfig
 	bosToken      string
 	eosToken      string
 	unkToken      string
-	padToken      string
-	maskToken     string
 }
 
 // TokenizerJSON represents the structure of tokenizer.json
@@ -71,13 +68,10 @@ func NewSentencePieceTokenizer() *SentencePieceTokenizer {
 	return &SentencePieceTokenizer{
 		vocab:         make(map[string]int),
 		vocabReverse:  make(map[int]string),
-		merges:        [][]string{},
 		specialTokens: make(map[string]int),
 		bosToken:      "<s>",
 		eosToken:      "</s>",
 		unkToken:      "<unk>",
-		padToken:      "<pad>",
-		maskToken:     "<mask>",
 	}
 }
 
@@ -146,9 +140,6 @@ func (t *SentencePieceTokenizer) LoadFromHuggingFace(modelName string) error {
 		}
 	}
 
-	// Note: Unigram model doesn't use merges like BPE
-	// The merges field is not present in Unigram tokenizers
-
 	// Set up special tokens from added_tokens
 	for _, token := range tokenizerJSON.AddedTokens {
 		t.specialTokens[token.Content] = token.ID
@@ -160,15 +151,10 @@ func (t *SentencePieceTokenizer) LoadFromHuggingFace(modelName string) error {
 			t.eosToken = token.Content
 		case "<unk>":
 			t.unkToken = token.Content
-		case "<pad>":
-			t.padToken = token.Content
-		case "<mask>":
-			t.maskToken = token.Content
 		}
 	}
 
 	fmt.Printf("Loaded tokenizer with vocab size: %d\n", len(t.vocab))
-	fmt.Printf("Loaded %d merge operations\n", len(t.merges))
 	fmt.Printf("Special tokens: %v\n", t.specialTokens)
 
 	return nil
@@ -204,17 +190,12 @@ func (t *SentencePieceTokenizer) normalize(text string) string {
 
 // preTokenize performs pre-tokenization similar to XLM-RoBERTa
 func (t *SentencePieceTokenizer) preTokenize(text string) []string {
-	// XLM-RoBERTa uses a regex-based pre-tokenizer
-	// This pattern matches words, punctuation, and whitespace
 	re := regexp.MustCompile(`\w+|[^\w\s]`)
 	matches := re.FindAllString(text, -1)
 	
 	var tokens []string
-	for i, match := range matches {
-		// Add prefix space for non-first tokens (SentencePiece convention)
-		if i > 0 && isAlphaNumeric(match) {
-			tokens = append(tokens, "▁"+match)
-		} else if i == 0 && isAlphaNumeric(match) {
+	for _, match := range matches {
+		if isAlphaNumeric(match) {
 			tokens = append(tokens, "▁"+match)
 		} else {
 			tokens = append(tokens, match)
@@ -340,13 +321,8 @@ func (t *SentencePieceTokenizer) Encode(text string) ([]int64, []int64) {
 		attentionMask[i] = 1
 	}
 	
-	fmt.Printf("Tokenization process:\n")
-	fmt.Printf("  Original text: %s\n", text)
-	fmt.Printf("  Normalized: %s\n", normalized)
-	fmt.Printf("  Pre-tokens: %v\n", preTokens)
-	fmt.Printf("  BPE tokens: %v\n", allTokens)
-	fmt.Printf("  Final tokens: %v\n", finalTokens)
-	fmt.Printf("  Token IDs: %v\n", inputIds)
+	// Optional debug output (comment out for production)
+	// fmt.Printf("Tokenized '%s' -> %v\n", text, inputIds)
 	
 	return inputIds, attentionMask
 }
