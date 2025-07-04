@@ -20,5 +20,5 @@ sudo cp -r onnxruntime-linux-x64-1.22.0/lib /usr/local/lib/onnxruntime
 # Go
 
 ```bash
-go run main.go
+go run main.go tokenizer.go
 ```
