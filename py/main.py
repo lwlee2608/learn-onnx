@@ -16,7 +16,7 @@ tokenizer = AutoTokenizer.from_pretrained('jinaai/jina-embeddings-v3')
 config = PretrainedConfig.from_pretrained('jinaai/jina-embeddings-v3')
 
 # Tokenize input
-input_text = tokenizer('This is a orange', return_tensors='np')
+input_text = tokenizer('This is an apple', return_tensors='np')
 
 # ONNX session
 model_path = 'model/model.onnx'

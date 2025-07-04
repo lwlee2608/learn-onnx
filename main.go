@@ -4,6 +4,7 @@ import (
 	"fmt"
 	ort "github.com/yalue/onnxruntime_go"
 	"math"
+	"strings"
 )
 
 func meanPooling(modelOutput []float32, attentionMask []int64, batchSize, seqLen, embedDim int) []float32 {
@@ -58,15 +59,32 @@ func main() {
 	}
 	defer ort.DestroyEnvironment()
 
-	// Initialize tokenizer
-	tokenizer := NewTokenizer()
+	// Initialize real SentencePiece tokenizer
+	tokenizer := NewSentencePieceTokenizer()
 	err = tokenizer.LoadFromHuggingFace("jinaai/jina-embeddings-v3")
 	if err != nil {
 		panic(fmt.Errorf("failed to load tokenizer: %v", err))
 	}
 
-	// Tokenize input text dynamically
-	inputText := "This is a orange"
+	// Test with different texts to show dynamic tokenization
+	testTexts := []string{
+		"This is an apple",
+		"Hello world!",
+		"机器学习很有趣",
+		"The quick brown fox jumps over the lazy dog",
+		"🚀 Tokenization is working!",
+	}
+
+	for _, text := range testTexts {
+		fmt.Printf("\n" + strings.Repeat("=", 60) + "\n")
+		fmt.Printf("Testing text: %s\n", text)
+		ids, _ := tokenizer.Encode(text)
+		fmt.Printf("Final result - IDs: %v\n", ids)
+		fmt.Printf("Decoded: %s\n", tokenizer.DecodeIds(ids))
+	}
+
+	// Use the first text for the model
+	inputText := testTexts[0]
 	inputIds, attentionMask := tokenizer.Encode(inputText)
 
 	// Get task ID dynamically
@@ -76,6 +94,9 @@ func main() {
 		panic(fmt.Errorf("failed to get task ID: %v", err))
 	}
 	taskId := []int64{taskIdValue}
+
+	// Test decoding
+	fmt.Printf("Decoded text: %s\n", tokenizer.DecodeIds(inputIds))
 
 	// Dynamic dimensions based on tokenization
 	batchSize := 1
