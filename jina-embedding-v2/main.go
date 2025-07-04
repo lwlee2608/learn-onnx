@@ -4,6 +4,7 @@ import (
 	"fmt"
 	ort "github.com/yalue/onnxruntime_go"
 	"math"
+	"time"
 )
 
 func meanPooling(modelOutput []float32, attentionMask []int64, batchSize, seqLen, embedDim int) []float32 {
@@ -65,9 +66,20 @@ func main() {
 		panic(fmt.Errorf("failed to load tokenizer: %v", err))
 	}
 
-	// Tokenize input text dynamically
+	model := "py/model/model.onnx"
+
+	// Input text
 	inputText := "This is an apple"
+	fmt.Printf("\nRunning model inference:\n")
+	fmt.Printf("Input: %s\n", inputText)
+
+	// Start timing from tokenization
+	startTime := time.Now()
+	
+	// Tokenize input text dynamically
+	tokenizerStart := time.Now()
 	inputIds, attentionMask := tokenizer.Encode(inputText)
+	tokenizerTime := time.Since(tokenizerStart)
 	
 	// Create token type IDs (all zeros for single sequence)
 	tokenTypeIds := make([]int64, len(inputIds))
@@ -88,12 +100,11 @@ func main() {
 	seqLen := len(inputIds)
 	embedDim := 768
 
-	fmt.Printf("\nRunning model inference:\n")
-	fmt.Printf("Input: %s\n", inputText)
 	fmt.Printf("Token IDs: %v\n", inputIds)
 	fmt.Printf("Task ID: %v\n", taskId)
 
 	// Create input tensors
+	tensorStart := time.Now()
 	inputIdsShape := ort.NewShape(int64(batchSize), int64(seqLen))
 	inputIdsTensor, err := ort.NewTensor(inputIdsShape, inputIds)
 	if err != nil {
@@ -115,13 +126,6 @@ func main() {
 	}
 	defer tokenTypeIdsTensor.Destroy()
 
-	// taskIdShape := ort.NewShape(1)
-	// taskIdTensor, err := ort.NewTensor(taskIdShape, taskId)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// defer taskIdTensor.Destroy()
-
 	// Create output tensor
 	outputShape := ort.NewShape(int64(batchSize), int64(seqLen), int64(embedDim))
 	outputTensor, err := ort.NewEmptyTensor[float32](outputShape)
@@ -129,8 +133,10 @@ func main() {
 		panic(err)
 	}
 	defer outputTensor.Destroy()
+	tensorTime := time.Since(tensorStart)
 
-	model := "py/model/model.onnx"
+	// Create session with actual tensors and run inference
+	inferenceStart := time.Now()
 	session, err := ort.NewAdvancedSession(model,
 		[]string{"input_ids", "attention_mask", "token_type_ids"},
 		[]string{"last_hidden_state"},
@@ -145,6 +151,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	inferenceTime := time.Since(inferenceStart)
+	
+	// Record total time including tokenization and inference
+	totalTime := time.Since(startTime)
+	fmt.Printf("Tokenizer time: %v\n", tokenizerTime)
+	fmt.Printf("Tensor creation time: %v\n", tensorTime)
+	fmt.Printf("Inference time: %v\n", inferenceTime)
+	fmt.Printf("Total time (tokenization + inference): %v\n", totalTime)
 
 	// Get model output
 	rawOutput := outputTensor.GetData()

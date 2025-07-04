@@ -1,6 +1,7 @@
 import onnxruntime
 import numpy as np
 from transformers import AutoTokenizer, PretrainedConfig
+import time
 
 # Mean pool function
 def mean_pooling(model_output: np.ndarray, attention_mask: np.ndarray):
@@ -15,15 +16,22 @@ def mean_pooling(model_output: np.ndarray, attention_mask: np.ndarray):
 tokenizer = AutoTokenizer.from_pretrained('jinaai/jina-embeddings-v2-base-en')
 config = PretrainedConfig.from_pretrained('jinaai/jina-embeddings-v2-base-en')
 
-# Tokenize input
-input_text = tokenizer('This is an apple', return_tensors='np')
-
-# ONNX session
+# Load ONNX session
 model_path = 'model/model.onnx'
 session = onnxruntime.InferenceSession(model_path)
 
 # Check model inputs
 print("Model inputs:", [input.name for input in session.get_inputs()])
+
+# Input text
+input_text_str = "This is an apple"
+print(f"Input: {input_text_str}")
+
+# Start timing from tokenization
+start_time = time.time()
+
+# Tokenize input
+input_text = tokenizer(input_text_str, return_tensors='np')
 
 # Prepare inputs for ONNX model
 inputs = {
@@ -34,6 +42,10 @@ inputs = {
 
 # Run model
 outputs = session.run(None, inputs)[0]
+
+# Record total time including tokenization and inference
+total_time = time.time() - start_time
+print(f"Total time (tokenization + inference): {total_time:.4f} seconds")
 
 print(outputs)
 
