@@ -30,6 +30,12 @@ huggingface-cli scan-cache
 
 ## Run the Test
 
+### Current Best Candidate approach
+
+```
+go run coreml/main.go
+```
+
 ### Normal Inferencing (Always load model first)
 
 ```
