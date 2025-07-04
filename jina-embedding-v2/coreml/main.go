@@ -20,9 +20,10 @@ func main() {
 	defer service.Close()
 
 	start := time.Now()
-	_, err := service.Infer(input)
+	result, err := service.Infer(input)
 	elapsed := time.Since(start)
 
+	fmt.Printf("Result: %s", result)
 	if err != nil {
 		fmt.Printf("Error: %v", err)
 	}
@@ -65,6 +66,7 @@ func (s *Service) Infer(inputValue string) (string, error) {
 }
 
 func (s *Service) inferInteractive(inputValue string) (string, error) {
+	fmt.Printf("inferencing : %s", inputValue)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -163,6 +165,10 @@ func (s *Service) startInteractiveProcess() error {
 	}
 	s.stdout = stdout
 	s.scanner = bufio.NewScanner(stdout)
+	
+	// Set a larger buffer size to handle large embedding responses
+	buf := make([]byte, 10*1024*1024) // 10MB buffer
+	s.scanner.Buffer(buf, 10*1024*1024)
 
 	if err := s.cmd.Start(); err != nil {
 		return fmt.Errorf("failed to start interactive process: %w", err)
@@ -198,6 +204,7 @@ func (s *Service) stopInteractiveProcess() error {
 }
 
 func (s *Service) restartInteractiveProcess() error {
+	fmt.Print("restarted")
 	s.stopInteractiveProcess()
 	return s.startInteractiveProcess()
 }

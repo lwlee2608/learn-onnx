@@ -12,13 +12,13 @@ func TestCoreMLInference(t *testing.T) {
 	service := NewService(binaryPath, modelPath, false)
 
 	start := time.Now()
-	_, err := service.Infer(input)
+	result, err := service.Infer(input)
 	elapsed := time.Since(start)
 
 	if err != nil {
 		t.Logf("Error: %v", err)
 	}
-	// t.Logf("Result: %s", result)
+	t.Logf("Result: %s", result)
 	t.Logf("Inference time: %v", elapsed)
 }
 
