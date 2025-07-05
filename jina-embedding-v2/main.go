@@ -4,6 +4,7 @@ import (
 	"fmt"
 	ort "github.com/yalue/onnxruntime_go"
 	"math"
+	"runtime"
 	"time"
 )
 
@@ -55,8 +56,15 @@ type EmbeddingModel struct {
 }
 
 func NewEmbeddingModel(modelPath string) (*EmbeddingModel, error) {
-	lib := "/usr/local/lib/onnxruntime/lib/libonnxruntime.so"
-	ort.SetSharedLibraryPath(lib)
+	// Set library path based on OS
+	switch runtime.GOOS {
+	case "linux":
+		ort.SetSharedLibraryPath("/usr/local/lib/onnxruntime/lib/libonnxruntime.so")
+	case "darwin":
+		ort.SetSharedLibraryPath("/usr/local/lib/onnxruntime/libonnxruntime.dylib")
+	default:
+		return nil, fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
+	}
 
 	err := ort.InitializeEnvironment()
 	if err != nil {
@@ -153,7 +161,7 @@ func (m *EmbeddingModel) Embed(inputText string) ([]float32, error) {
 
 func main() {
 	model := "py/model/model.onnx"
-	
+
 	fmt.Printf("Initializing embedding model...\n")
 	initStart := time.Now()
 	embeddingModel, err := NewEmbeddingModel(model)
