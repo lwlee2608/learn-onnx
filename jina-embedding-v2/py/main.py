@@ -17,7 +17,7 @@ tokenizer = AutoTokenizer.from_pretrained('jinaai/jina-embeddings-v2-base-en')
 config = PretrainedConfig.from_pretrained('jinaai/jina-embeddings-v2-base-en')
 
 # Load ONNX session
-model_path = 'model/model.onnx'
+model_path = '../model/model.onnx'
 session = onnxruntime.InferenceSession(model_path)
 
 # Check model inputs

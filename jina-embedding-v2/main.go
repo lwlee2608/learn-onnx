@@ -160,7 +160,7 @@ func (m *EmbeddingModel) Embed(inputText string) ([]float32, error) {
 }
 
 func main() {
-	model := "py/model/model.onnx"
+	model := "model/model.onnx"
 
 	fmt.Printf("Initializing embedding model...\n")
 	initStart := time.Now()
