@@ -1,7 +1,13 @@
+.PHONY: download-model clean run-onnx-go run-onnx-py run-coreml-go jina-v2
+
+download-model: model/model.onnx model/coreml/float32_model.mlpackage
+
 model/model.onnx:
+	@mkdir -p model
 	huggingface-cli download jinaai/jina-embeddings-v2-base-en model.onnx --local-dir ./model
 
 model/coreml/float32_model.mlpackage:
+	@mkdir -p model
 	huggingface-cli download jinaai/jina-embeddings-v2-base-en --include="coreml/float32_model.mlpackage/*" --local-dir ./model
 
 jina-v2: model/coreml/float32_model.mlpackage
@@ -11,7 +17,10 @@ run-onnx-go: model/model.onnx
 	go run main.go tokenizer.go
 
 run-onnx-py: model/model.onnx
-	cd py; uv run main.py
+	cd py && uv run main.py
 
 run-coreml-go: jina-v2
 	go run coreml/main.go
+
+clean:
+	rm -rf model/ jina-v2
