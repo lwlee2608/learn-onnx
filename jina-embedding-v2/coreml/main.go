@@ -14,7 +14,7 @@ import (
 
 func main() {
 	binaryPath := "./coreml-cli-v2"
-	modelPath := "./model/coreml/float32_model.mlpackage"
+	modelPath := "./jina-v2"
 	input := "This is an apple"
 	service := NewService(binaryPath, modelPath, true)
 	defer service.Close()
