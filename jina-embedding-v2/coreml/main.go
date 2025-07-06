@@ -14,8 +14,8 @@ import (
 
 func main() {
 	binaryPath := "./coreml-cli-v2"
-	modelPath := "./jina-v2"
-	input := "Testing"
+	modelPath := "./model/coreml/float32_model.mlpackage"
+	input := "This is an apple"
 	service := NewService(binaryPath, modelPath, true)
 	defer service.Close()
 
@@ -165,7 +165,7 @@ func (s *Service) startInteractiveProcess() error {
 	}
 	s.stdout = stdout
 	s.scanner = bufio.NewScanner(stdout)
-	
+
 	// Set a larger buffer size to handle large embedding responses
 	buf := make([]byte, 10*1024*1024) // 10MB buffer
 	s.scanner.Buffer(buf, 10*1024*1024)
