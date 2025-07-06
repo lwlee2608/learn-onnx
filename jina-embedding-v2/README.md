@@ -5,6 +5,7 @@
 ```bash
 make download-model
 ```
+
 ```bash
 make run-onnx-py
 ```
@@ -35,10 +36,12 @@ sudo cp -r onnxruntime-osx-arm64-1.22.0/lib /usr/local/lib/onnxruntime
 
 ```
 
-## Run 
+## Run
+
 ```bash
 make download-model
 ```
+
 ```bash
 make run-onnx-go
 ```
@@ -68,7 +71,13 @@ huggingface-cli scan-cache
 ---
 
 ```
-./coreml/coreml-cli-v2 compile <SOURCE> jina-v2
+cp -r ~/.cache/huggingface/hub/models--jinaai--jina-embeddings-v2-base-en/snapshots/322d4d7e2f35e84137961a65af894fda0385eb7a/coreml/float32_model.mlpackage jina-v2.mlpackage
+```
+
+---
+
+```
+./coreml/coreml-cli-v2 compile jina-v2.mlpackage jina-v2
 ```
 
 ## Run the Test
