@@ -1,16 +1,8 @@
 # Jina v2 Benchmark
 
-# Python Onnx
-
-```bash
-make run-onnx-py
-```
-
-# Go Onnx
-
 ## Install onnxruntime
 
-Download onxxruntime
+`onxxruntime` is required to run onnx-go
 
 ### Linux:
 
@@ -32,13 +24,19 @@ sudo cp -r onnxruntime-osx-arm64-1.22.0/lib /usr/local/lib/onnxruntime
 
 ```
 
-## Run
+# Python Onnx
+
+```bash
+make run-onnx-py
+```
+
+# Go Onnx
 
 ```bash
 make run-onnx-go
 ```
 
-## Core ML Version
+## Go Core ML
 
 You need an Apple machine, no way around it.
 
