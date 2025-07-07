@@ -24,7 +24,8 @@ session = onnxruntime.InferenceSession(model_path)
 print("Model inputs:", [input.name for input in session.get_inputs()])
 
 # Input text
-input_text_str = "This is an apple"
+# input_text_str = "This is an apple"
+input_text_str = "On the morning of April 16, 2024, I attended the annual AI Innovation Conference in downtown San Francisco. The keynote speaker, Dr. Evelyn Chen, discussed the ethical implications of autonomous decision-making systems in healthcare. I remember the room was filled with experts from various fields, including data science, medicine, and law. After her talk, I had a conversation with a software engineer named Miguel who was developing a diagnostic tool powered by GPT-4. He shared insights about real-world challenges in gathering unbiased medical data. Later, I participated in a roundtable about data privacy and shared my perspective on how granular access controls could help protect sensitive patient information. The day ended with a networking session where I met professionals interested in AI governance. This experience gave me new insights into balancing innovation and ethics."
 print(f"Input: {input_text_str}")
 
 # Start timing from tokenization

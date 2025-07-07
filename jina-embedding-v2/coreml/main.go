@@ -15,19 +15,20 @@ import (
 func main() {
 	binaryPath := "./coreml-cli-v2"
 	modelPath := "./jina-v2"
-	input := "This is an apple"
+	// input := "This is an apple"
+	input := "On the morning of April 16, 2024, I attended the annual AI Innovation Conference in downtown San Francisco. The keynote speaker, Dr. Evelyn Chen, discussed the ethical implications of autonomous decision-making systems in healthcare. I remember the room was filled with experts from various fields, including data science, medicine, and law. After her talk, I had a conversation with a software engineer named Miguel who was developing a diagnostic tool powered by GPT-4. He shared insights about real-world challenges in gathering unbiased medical data. Later, I participated in a roundtable about data privacy and shared my perspective on how granular access controls could help protect sensitive patient information. The day ended with a networking session where I met professionals interested in AI governance. This experience gave me new insights into balancing innovation and ethics."
 	service := NewService(binaryPath, modelPath, true)
 	defer service.Close()
 
 	start := time.Now()
-	result, err := service.Infer(input)
+	_, err := service.Infer(input)
 	elapsed := time.Since(start)
 
-	fmt.Printf("Result: %s", result)
+	// fmt.Printf("Result: %s", result[10:])
 	if err != nil {
 		fmt.Printf("Error: %v", err)
 	}
-	fmt.Printf("Interactive inference time: %v", elapsed)
+	fmt.Printf("\nInteractive inference time: %v", elapsed)
 }
 
 // Service.go (TOBE the service to be interacted with)
