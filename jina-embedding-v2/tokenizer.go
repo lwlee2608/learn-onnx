@@ -7,17 +7,15 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
-	"unicode"
 )
 
-// ModelConfig represents the model configuration
+// ModelConfig represents the model configuration.
 type ModelConfig struct {
 	LoraAdaptations []string `json:"lora_adaptations"`
 }
 
-// SentencePieceTokenizer represents a proper XLM-RoBERTa tokenizer
+// SentencePieceTokenizer represents a proper XLM-RoBERTa tokenizer.
 type SentencePieceTokenizer struct {
 	vocab         map[string]int
 	vocabReverse  map[int]string
@@ -28,17 +26,17 @@ type SentencePieceTokenizer struct {
 	unkToken      string
 }
 
-// TokenizerJSON represents the structure of tokenizer.json
+// TokenizerJSON represents the structure of tokenizer.json.
 type TokenizerJSON struct {
 	Version string `json:"version"`
 	Model   struct {
-		Type       string              `json:"type"`
-		Vocab      interface{}         `json:"vocab"`  // Can be object or array
-		UnkId      int                 `json:"unk_id"`
-		Dropout    *float64            `json:"dropout"`
-		Continuing interface{}          `json:"continuing_subword_prefix"`
-		EndOfWord  bool                `json:"end_of_word_suffix"`
-		FuseUnk    bool                `json:"fuse_unk"`
+		Type       string      `json:"type"`
+		Vocab      interface{} `json:"vocab"` // Can be object or array
+		UnkId      int         `json:"unk_id"`
+		Dropout    *float64    `json:"dropout"`
+		Continuing interface{} `json:"continuing_subword_prefix"`
+		EndOfWord  bool        `json:"end_of_word_suffix"`
+		FuseUnk    bool        `json:"fuse_unk"`
 	} `json:"model"`
 	Normalizer struct {
 		Type string `json:"type"`
@@ -49,7 +47,7 @@ type TokenizerJSON struct {
 		TrimOffset bool   `json:"trim_offsets"`
 	} `json:"pre_tokenizer"`
 	PostProcessor struct {
-		Type string `json:"type"`
+		Type string   `json:"type"`
 		Sep  []string `json:"sep"`
 		Cls  []string `json:"cls"`
 	} `json:"post_processor"`
@@ -63,7 +61,7 @@ type TokenizerJSON struct {
 	} `json:"added_tokens"`
 }
 
-// NewSentencePieceTokenizer creates a new SentencePiece tokenizer
+// NewSentencePieceTokenizer creates a new SentencePiece tokenizer.
 func NewSentencePieceTokenizer() *SentencePieceTokenizer {
 	return &SentencePieceTokenizer{
 		vocab:         make(map[string]int),
@@ -75,13 +73,15 @@ func NewSentencePieceTokenizer() *SentencePieceTokenizer {
 	}
 }
 
-// LoadFromHuggingFace downloads and loads the real tokenizer from HuggingFace
+// LoadFromHuggingFace downloads and loads the real tokenizer from HuggingFace.
 func (t *SentencePieceTokenizer) LoadFromHuggingFace(modelName string) error {
 	baseURL := fmt.Sprintf("https://huggingface.co/%s/resolve/main", modelName)
-	
+
 	// Create cache directory
 	cacheDir := filepath.Join(os.TempDir(), "real_tokenizer_cache", modelName)
-	os.MkdirAll(cacheDir, 0755)
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		return fmt.Errorf("failed to create cache directory: %v", err)
+	}
 
 	// Download tokenizer.json
 	tokenizerPath := filepath.Join(cacheDir, "tokenizer.json")
@@ -129,7 +129,7 @@ func (t *SentencePieceTokenizer) LoadFromHuggingFace(modelName string) error {
 
 	// Set up tokenizer
 	t.config = &modelConfig
-	
+
 	// Parse vocab - handle both object and array formats
 	switch vocab := tokenizerJSON.Model.Vocab.(type) {
 	case map[string]interface{}:
@@ -172,13 +172,17 @@ func (t *SentencePieceTokenizer) LoadFromHuggingFace(modelName string) error {
 	return nil
 }
 
-// downloadFile downloads a file from URL
+// downloadFile downloads a file from URL.
 func (t *SentencePieceTokenizer) downloadFile(url, filepath string) error {
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Printf("Warning: failed to close response body: %v\n", err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("failed to download file: status %d", resp.StatusCode)
@@ -188,103 +192,17 @@ func (t *SentencePieceTokenizer) downloadFile(url, filepath string) error {
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() {
+		if err := out.Close(); err != nil {
+			fmt.Printf("Warning: failed to close file: %v\n", err)
+		}
+	}()
 
 	_, err = io.Copy(out, resp.Body)
 	return err
 }
 
-// normalize performs text normalization (NFD normalization)
-func (t *SentencePieceTokenizer) normalize(text string) string {
-	// Basic normalization - in a full implementation you'd use unicode.Normalize
-	return strings.TrimSpace(text)
-}
-
-// preTokenize performs pre-tokenization similar to XLM-RoBERTa
-func (t *SentencePieceTokenizer) preTokenize(text string) []string {
-	re := regexp.MustCompile(`\w+|[^\w\s]`)
-	matches := re.FindAllString(text, -1)
-	
-	var tokens []string
-	for _, match := range matches {
-		if isAlphaNumeric(match) {
-			tokens = append(tokens, "▁"+match)
-		} else {
-			tokens = append(tokens, match)
-		}
-	}
-	
-	return tokens
-}
-
-// isAlphaNumeric checks if a string contains alphanumeric characters
-func isAlphaNumeric(s string) bool {
-	for _, r := range s {
-		if unicode.IsLetter(r) || unicode.IsDigit(r) {
-			return true
-		}
-	}
-	return false
-}
-
-// unigramTokenize performs Unigram tokenization on a token
-func (t *SentencePieceTokenizer) unigramTokenize(token string) []string {
-	if len(token) == 0 {
-		return []string{}
-	}
-
-	// For Unigram, we use a greedy approach to find the best segmentation
-	// This is a simplified implementation
-	return t.greedyTokenize(token)
-}
-
-// greedyTokenize performs greedy tokenization (simplified Unigram)
-func (t *SentencePieceTokenizer) greedyTokenize(token string) []string {
-	if len(token) == 0 {
-		return []string{}
-	}
-
-	var result []string
-	i := 0
-	
-	for i < len(token) {
-		// Try to find the longest matching token from current position
-		bestMatch := ""
-		bestLength := 0
-		
-		// Try all possible substrings starting from current position
-		for j := i + 1; j <= len(token); j++ {
-			candidate := token[i:j]
-			if _, exists := t.vocab[candidate]; exists {
-				if len(candidate) > bestLength {
-					bestMatch = candidate
-					bestLength = len(candidate)
-				}
-			}
-		}
-		
-		if bestMatch != "" {
-			result = append(result, bestMatch)
-			i += bestLength
-		} else {
-			// If no match found, try single character or use UNK
-			if i < len(token) {
-				char := string([]rune(token)[i])
-				if _, exists := t.vocab[char]; exists {
-					result = append(result, char)
-				} else {
-					result = append(result, t.unkToken)
-				}
-				i++
-			}
-		}
-	}
-	
-	return result
-}
-
-
-// tokenToIds converts tokens to IDs
+// tokenToIds converts tokens to IDs.
 func (t *SentencePieceTokenizer) tokenToIds(tokens []string) []int64 {
 	var ids []int64
 	for _, token := range tokens {
@@ -303,41 +221,39 @@ func (t *SentencePieceTokenizer) tokenToIds(tokens []string) []int64 {
 	return ids
 }
 
-// Encode tokenizes text and returns token IDs using BERT-style tokenization
+// Encode tokenizes text and returns token IDs using BERT-style tokenization.
 func (t *SentencePieceTokenizer) Encode(text string) ([]int64, []int64) {
 	// Convert text to lowercase for BERT-style tokenization
 	text = strings.ToLower(text)
-	
+
 	// Simple word-level tokenization that matches the expected output
 	// Split on spaces and punctuation
 	words := strings.Fields(text)
-	
+
 	var tokens []string
-	
+
 	// Add [CLS] token at the beginning
 	tokens = append(tokens, "[CLS]")
-	
+
 	// Add words as tokens
-	for _, word := range words {
-		tokens = append(tokens, word)
-	}
-	
+	tokens = append(tokens, words...)
+
 	// Add [SEP] token at the end
 	tokens = append(tokens, "[SEP]")
-	
+
 	// Convert to IDs using the vocab
 	inputIds := t.tokenToIds(tokens)
-	
+
 	// Create attention mask
 	attentionMask := make([]int64, len(inputIds))
 	for i := range attentionMask {
 		attentionMask[i] = 1
 	}
-	
+
 	return inputIds, attentionMask
 }
 
-// GetTaskID returns the task ID for a given task type
+// GetTaskID returns the task ID for a given task type.
 func (t *SentencePieceTokenizer) GetTaskID(taskType string) (int64, error) {
 	if t.config == nil {
 		return 0, fmt.Errorf("config not loaded")
@@ -353,7 +269,7 @@ func (t *SentencePieceTokenizer) GetTaskID(taskType string) (int64, error) {
 	return 0, nil
 }
 
-// DecodeIds converts token IDs back to text (for debugging)
+// DecodeIds converts token IDs back to text (for debugging).
 func (t *SentencePieceTokenizer) DecodeIds(ids []int64) string {
 	var tokens []string
 	for _, id := range ids {
@@ -363,12 +279,12 @@ func (t *SentencePieceTokenizer) DecodeIds(ids []int64) string {
 			tokens = append(tokens, t.unkToken)
 		}
 	}
-	
+
 	// Join tokens and clean up
 	text := strings.Join(tokens, "")
 	text = strings.ReplaceAll(text, "▁", " ")
 	text = strings.ReplaceAll(text, t.bosToken, "")
 	text = strings.ReplaceAll(text, t.eosToken, "")
-	
+
 	return strings.TrimSpace(text)
 }
