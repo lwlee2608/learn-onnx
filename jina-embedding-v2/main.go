@@ -98,9 +98,7 @@ func (m *EmbeddingModel) Close() {
 }
 
 func (m *EmbeddingModel) Embed(inputText string) ([]float32, error) {
-	tokenizerStart := time.Now()
 	inputIds, attentionMask := m.tokenizer.Encode(inputText)
-	tokenizerTime := time.Since(tokenizerStart)
 
 	tokenTypeIds := make([]int64, len(inputIds))
 	for i := range tokenTypeIds {
@@ -111,7 +109,6 @@ func (m *EmbeddingModel) Embed(inputText string) ([]float32, error) {
 	seqLen := len(inputIds)
 	embedDim := 768
 
-	tensorStart := time.Now()
 	inputIdsShape := ort.NewShape(int64(batchSize), int64(seqLen))
 	inputIdsTensor, err := ort.NewTensor(inputIdsShape, inputIds)
 	if err != nil {
@@ -139,18 +136,11 @@ func (m *EmbeddingModel) Embed(inputText string) ([]float32, error) {
 		return nil, err
 	}
 	defer outputTensor.Destroy()
-	tensorTime := time.Since(tensorStart)
 
-	inferenceStart := time.Now()
 	err = m.session.Run([]ort.Value{inputIdsTensor, attentionMaskTensor, tokenTypeIdsTensor}, []ort.Value{outputTensor})
 	if err != nil {
 		return nil, err
 	}
-	inferenceTime := time.Since(inferenceStart)
-
-	fmt.Printf("Tokenizer time: %v\n", tokenizerTime)
-	fmt.Printf("Tensor creation time: %v\n", tensorTime)
-	fmt.Printf("Inference time: %v\n", inferenceTime)
 
 	rawOutput := outputTensor.GetData()
 	pooledEmbeddings := meanPooling(rawOutput, attentionMask, batchSize, seqLen, embedDim)
@@ -185,8 +175,7 @@ func main() {
 	}
 	totalTime := time.Since(startTime)
 
-	fmt.Printf("Total inference time: %v\n", totalTime)
-	fmt.Printf("Final embeddings shape: [%d, %d]\n", 1, 768)
+	fmt.Printf("First inference time: %v\n", totalTime)
 	fmt.Printf("First 10 values: %v\n", embeddings[:10])
 
 	fmt.Printf("\nRunning second inference to show speed improvement:\n")
