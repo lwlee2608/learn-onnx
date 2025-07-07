@@ -24,13 +24,13 @@ sudo cp -r onnxruntime-osx-arm64-1.22.0/lib /usr/local/lib/onnxruntime
 
 ```
 
-# Python Onnx
+## Python Onnx
 
 ```bash
 make run-onnx-py
 ```
 
-# Go Onnx
+## Go Onnx
 
 ```bash
 make run-onnx-go
