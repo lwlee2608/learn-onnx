@@ -111,28 +111,28 @@ func (m *Model) Embed(inputText string) ([]float32, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer inputIdsTensor.Destroy()
+	defer func() { _ = inputIdsTensor.Destroy() }()
 
 	attentionMaskShape := ort.NewShape(int64(batchSize), int64(seqLen))
 	attentionMaskTensor, err := ort.NewTensor(attentionMaskShape, attentionMask)
 	if err != nil {
 		return nil, err
 	}
-	defer attentionMaskTensor.Destroy()
+	defer func() { _ = attentionMaskTensor.Destroy() }()
 
 	tokenTypeIdsShape := ort.NewShape(int64(batchSize), int64(seqLen))
 	tokenTypeIdsTensor, err := ort.NewTensor(tokenTypeIdsShape, tokenTypeIds)
 	if err != nil {
 		return nil, err
 	}
-	defer tokenTypeIdsTensor.Destroy()
+	defer func() { _ = tokenTypeIdsTensor.Destroy() }()
 
 	outputShape := ort.NewShape(int64(batchSize), int64(seqLen), int64(embedDim))
 	outputTensor, err := ort.NewEmptyTensor[float32](outputShape)
 	if err != nil {
 		return nil, err
 	}
-	defer outputTensor.Destroy()
+	defer func() { _ = outputTensor.Destroy() }()
 
 	err = m.session.Run([]ort.Value{inputIdsTensor, attentionMaskTensor, tokenTypeIdsTensor}, []ort.Value{outputTensor})
 	if err != nil {
