@@ -14,7 +14,7 @@ jina-v2: model/coreml/float32_model.mlpackage
 	./coreml-cli-v2 compile model/coreml/float32_model.mlpackage jina-v2
 
 run-onnx-go: model/model.onnx
-	go run main.go tokenizer.go
+	go run main.go
 
 run-onnx-py: model/model.onnx
 	cd py && uv run main.py
