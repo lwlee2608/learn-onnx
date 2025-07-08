@@ -22,5 +22,8 @@ run-onnx-py: model/model.onnx
 run-coreml-go: jina-v2
 	go run coreml/main.go
 
+run-weavite: model/model.onnx
+	go run cmd/weaviate/main.go
+
 clean:
 	rm -rf model/ jina-v2
