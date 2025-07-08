@@ -69,6 +69,76 @@ func NewSentencePieceTokenizer() *SentencePieceTokenizer {
 	}
 }
 
+func (t *SentencePieceTokenizer) LoadFromLocal(tokenizerPath, configPath string) error {
+	if _, err := os.Stat(tokenizerPath); os.IsNotExist(err) {
+		return fmt.Errorf("tokenizer.json not found at %s", tokenizerPath)
+	}
+
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		return fmt.Errorf("config.json not found at %s", configPath)
+	}
+
+	tokenizerData, err := os.ReadFile(tokenizerPath)
+	if err != nil {
+		return fmt.Errorf("failed to read tokenizer.json: %v", err)
+	}
+
+	var tokenizerJSON TokenizerJSON
+	err = json.Unmarshal(tokenizerData, &tokenizerJSON)
+	if err != nil {
+		return fmt.Errorf("failed to parse tokenizer.json: %v", err)
+	}
+
+	configData, err := os.ReadFile(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to read config.json: %v", err)
+	}
+
+	var modelConfig ModelConfig
+	err = json.Unmarshal(configData, &modelConfig)
+	if err != nil {
+		return fmt.Errorf("failed to parse config.json: %v", err)
+	}
+
+	t.config = &modelConfig
+
+	switch vocab := tokenizerJSON.Model.Vocab.(type) {
+	case map[string]interface{}:
+		for token, id := range vocab {
+			if idInt, ok := id.(float64); ok {
+				t.vocab[token] = int(idInt)
+				t.vocabReverse[int(idInt)] = token
+			}
+		}
+	case []interface{}:
+		for i, vocabItem := range vocab {
+			if vocabArray, ok := vocabItem.([]interface{}); ok && len(vocabArray) >= 2 {
+				if token, ok := vocabArray[0].(string); ok {
+					t.vocab[token] = i
+					t.vocabReverse[i] = token
+				}
+			}
+		}
+	}
+
+	for _, token := range tokenizerJSON.AddedTokens {
+		t.specialTokens[token.Content] = token.ID
+		switch token.Content {
+		case "<s>":
+			t.bosToken = token.Content
+		case "</s>":
+			t.eosToken = token.Content
+		case "<unk>":
+			t.unkToken = token.Content
+		}
+	}
+
+	fmt.Printf("Loaded tokenizer with vocab size: %d\n", len(t.vocab))
+	fmt.Printf("Special tokens: %v\n", t.specialTokens)
+
+	return nil
+}
+
 func (t *SentencePieceTokenizer) LoadFromHuggingFace(modelName string) error {
 	baseURL := fmt.Sprintf("https://huggingface.co/%s/resolve/main", modelName)
 

@@ -13,6 +13,7 @@ func main() {
 
 	fmt.Printf("Initializing tokenizer...\n")
 	tok := tokenizer.NewSentencePieceTokenizer()
+	// err := tok.LoadFromLocal("model/tokenizer.json", "model/config.json")
 	err := tok.LoadFromHuggingFace("jinaai/jina-embeddings-v2-base-en")
 	if err != nil {
 		panic(fmt.Errorf("failed to load tokenizer: %v", err))
