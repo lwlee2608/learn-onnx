@@ -1,0 +1,9 @@
+[project]
+name = "llama-onnx-inference"
+version = "0.1.0"
+dependencies = [
+    "onnxruntime",
+    "transformers",
+    "torch",
+    "numpy",
+]
