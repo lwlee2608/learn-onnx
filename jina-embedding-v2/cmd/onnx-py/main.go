@@ -71,17 +71,17 @@ func sendInferenceRequest(text string) (*InferenceResponse, error) {
 }
 
 func startServer(pyDir string) *exec.Cmd {
-	cmd := exec.Command("uv", "run", "main.py", "server")
+	cmd := exec.Command("uv", "run", "main.py")
 	cmd.Dir = pyDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	
+
 	err := cmd.Start()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting server: %v\n", err)
 		return nil
 	}
-	
+
 	return cmd
 }
 
@@ -116,7 +116,7 @@ func main() {
 
 	var serverCmd *exec.Cmd
 	serverStartTime := time.Now()
-	
+
 	// Check if server is already running
 	if !isServerRunning() {
 		fmt.Println("Starting server and loading model...")
@@ -124,7 +124,7 @@ func main() {
 		if serverCmd == nil {
 			os.Exit(1)
 		}
-		
+
 		// Wait for server to start and load model
 		fmt.Print("Waiting for server to be ready")
 		for i := 0; i < 30; i++ { // Wait up to 30 seconds
@@ -135,7 +135,7 @@ func main() {
 			}
 		}
 		fmt.Println()
-		
+
 		if !isServerRunning() {
 			fmt.Fprintf(os.Stderr, "Server failed to start within timeout\n")
 			if serverCmd != nil {
@@ -146,16 +146,16 @@ func main() {
 	} else {
 		fmt.Println("Server already running, using existing instance")
 	}
-	
+
 	serverLoadDuration := time.Since(serverStartTime)
 	fmt.Printf("Server setup time: %v\n", serverLoadDuration)
 
 	// Run inference with hardcoded text
-	testText := "Hello, this is a test sentence for embedding generation."
-	fmt.Printf("\nRunning inference with text: %s\n", testText)
-	
+	inputText := "This is an apple"
+	fmt.Printf("\nRunning inference with text: %s\n", inputText)
+
 	start := time.Now()
-	response, err := sendInferenceRequest(testText)
+	response, err := sendInferenceRequest(inputText)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error sending inference request: %v\n", err)
 		if serverCmd != nil {
@@ -164,7 +164,7 @@ func main() {
 		os.Exit(1)
 	}
 	inferDuration := time.Since(start)
-	
+
 	if response.Error != "" {
 		fmt.Fprintf(os.Stderr, "Inference error: %s\n", response.Error)
 		if serverCmd != nil {
@@ -172,15 +172,15 @@ func main() {
 		}
 		os.Exit(1)
 	}
-	
-	fmt.Printf("Input: %s\n", testText)
+
+	fmt.Printf("Input: %s\n", inputText)
 	fmt.Printf("Python inference time: %.4f seconds\n", response.InferenceTime)
 	fmt.Printf("Go inference time (including network): %v\n", inferDuration)
 	fmt.Printf("Embedding shape: %v\n", response.Shape)
 	fmt.Printf("First 10 values: %v\n", response.Embedding[:10])
-	
+
 	fmt.Printf("Total execution time: %v\n", serverLoadDuration+inferDuration)
-	
+
 	// Clean up server if we started it
 	if serverCmd != nil {
 		fmt.Println("Stopping server...")

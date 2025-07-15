@@ -5,7 +5,6 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "click>=8.0.0",
     "einops>=0.8.1",
     "numpy<2",
     "onnxruntime>=1.22.0",
