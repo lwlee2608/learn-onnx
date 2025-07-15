@@ -7,6 +7,7 @@ import os
 import socket
 import threading
 import json
+import signal
 
 # Global variables to hold loaded model and tokenizer
 session = None
@@ -15,6 +16,10 @@ config = None
 
 SERVER_PORT = 8888
 MODEL_PATH = '../model/model.onnx'
+
+# Global server state
+server_socket = None
+shutdown_requested = False
 
 def mean_pooling(model_output: np.ndarray, attention_mask: np.ndarray):
     """Apply mean pooling to model outputs."""
@@ -58,7 +63,7 @@ def handle_inference_request(text):
         
         return {
             "embedding": embeddings[0].tolist(),
-            "shape": embeddings.shape,
+            "shape": list(embeddings.shape),
             "inference_time": total_time
         }
         
@@ -77,7 +82,11 @@ def handle_client(client_socket):
             response_bytes = response.encode('utf-8')
             client_socket.sendall(response_bytes)
         elif request["command"] == "ping":
-            client_socket.send(b"pong")
+            client_socket.send(b'{"status": "pong"}')
+        elif request["command"] == "shutdown":
+            global shutdown_requested
+            shutdown_requested = True
+            client_socket.send(b'{"status": "shutting down"}')
         else:
             client_socket.send(b'{"error": "Unknown command"}')
             
@@ -87,8 +96,22 @@ def handle_client(client_socket):
     finally:
         client_socket.close()
 
+def signal_handler(signum, frame):
+    """Handle shutdown signals."""
+    global shutdown_requested
+    print(f"\nReceived signal {signum}, initiating graceful shutdown...")
+    shutdown_requested = True
+    if server_socket:
+        server_socket.close()
+
 def start_server():
     """Start the inference server."""
+    global server_socket, shutdown_requested
+    
+    # Register signal handlers
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind(('localhost', SERVER_PORT))
@@ -97,15 +120,34 @@ def start_server():
     print(f"Server started on port {SERVER_PORT}")
     
     try:
-        while True:
-            client_socket, addr = server_socket.accept()
-            client_thread = threading.Thread(target=handle_client, args=(client_socket,))
-            client_thread.daemon = True
-            client_thread.start()
-    except KeyboardInterrupt:
-        print("Server shutting down...")
+        while not shutdown_requested:
+            try:
+                server_socket.settimeout(1.0)  # 1 second timeout for accept
+                client_socket, addr = server_socket.accept()
+                server_socket.settimeout(None)  # Reset timeout
+                
+                if shutdown_requested:
+                    client_socket.close()
+                    break
+                    
+                client_thread = threading.Thread(target=handle_client, args=(client_socket,))
+                client_thread.daemon = True
+                client_thread.start()
+                
+            except socket.timeout:
+                continue  # Check shutdown_requested flag
+            except OSError as e:
+                if shutdown_requested:
+                    break
+                print(f"Socket error: {e}")
+                break
+                
+    except Exception as e:
+        print(f"Server error: {e}")
     finally:
-        server_socket.close()
+        print("Server shutting down...")
+        if server_socket:
+            server_socket.close()
 
 def load_model():
     """Load the model and tokenizer."""

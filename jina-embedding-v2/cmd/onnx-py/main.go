@@ -6,7 +6,9 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 	"time"
 )
 
@@ -70,6 +72,64 @@ func sendInferenceRequest(text string) (*InferenceResponse, error) {
 	return &response, nil
 }
 
+func sendShutdownRequest() error {
+	conn, err := net.Dial("tcp", "localhost:"+serverPort)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	request := InferenceRequest{
+		Command: "shutdown",
+		Text:    "",
+	}
+
+	requestData, err := json.Marshal(request)
+	if err != nil {
+		return err
+	}
+
+	_, err = conn.Write(requestData)
+	if err != nil {
+		return err
+	}
+
+	// Read response but don't wait long
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	buffer := make([]byte, 1024)
+	_, err = conn.Read(buffer)
+	// Ignore read errors as server might close connection
+	return nil
+}
+
+func gracefulShutdown(serverCmd *exec.Cmd) {
+	if serverCmd == nil {
+		return
+	}
+
+	fmt.Println("Initiating graceful shutdown...")
+	
+	// Try to send shutdown command to server
+	if err := sendShutdownRequest(); err != nil {
+		fmt.Printf("Could not send shutdown request: %v\n", err)
+	}
+	
+	// Wait a bit for graceful shutdown
+	done := make(chan error, 1)
+	go func() {
+		done <- serverCmd.Wait()
+	}()
+	
+	select {
+	case <-done:
+		fmt.Println("Server shut down gracefully")
+	case <-time.After(5 * time.Second):
+		fmt.Println("Timeout waiting for graceful shutdown, force killing...")
+		serverCmd.Process.Kill()
+		serverCmd.Wait()
+	}
+}
+
 func startServer(pyDir string) *exec.Cmd {
 	cmd := exec.Command("uv", "run", "main.py")
 	cmd.Dir = pyDir
@@ -117,6 +177,10 @@ func main() {
 	var serverCmd *exec.Cmd
 	serverStartTime := time.Now()
 
+	// Set up signal handling for graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
 	// Check if server is already running
 	if !isServerRunning() {
 		fmt.Println("Starting server and loading model...")
@@ -124,6 +188,13 @@ func main() {
 		if serverCmd == nil {
 			os.Exit(1)
 		}
+
+		// Set up signal handler for server cleanup
+		go func() {
+			<-sigChan
+			gracefulShutdown(serverCmd)
+			os.Exit(0)
+		}()
 
 		// Wait for server to start and load model
 		fmt.Print("Waiting for server to be ready")
@@ -138,13 +209,17 @@ func main() {
 
 		if !isServerRunning() {
 			fmt.Fprintf(os.Stderr, "Server failed to start within timeout\n")
-			if serverCmd != nil {
-				serverCmd.Process.Kill()
-			}
+			gracefulShutdown(serverCmd)
 			os.Exit(1)
 		}
 	} else {
 		fmt.Println("Server already running, using existing instance")
+		// Set up signal handler for clean exit
+		go func() {
+			<-sigChan
+			fmt.Println("Received shutdown signal, exiting...")
+			os.Exit(0)
+		}()
 	}
 
 	serverLoadDuration := time.Since(serverStartTime)
@@ -183,8 +258,6 @@ func main() {
 
 	// Clean up server if we started it
 	if serverCmd != nil {
-		fmt.Println("Stopping server...")
-		serverCmd.Process.Kill()
-		serverCmd.Wait()
+		gracefulShutdown(serverCmd)
 	}
 }
