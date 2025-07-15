@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 )
 
 func main() {
@@ -43,7 +44,8 @@ func main() {
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 
-	// Run the command
+	// Run the command and measure execution time
+	start := time.Now()
 	if err := cmd.Run(); err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
 			os.Exit(exitError.ExitCode())
@@ -51,4 +53,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error running Python script: %v\n", err)
 		os.Exit(1)
 	}
+	duration := time.Since(start)
+	
+	fmt.Printf("Python script execution time: %v\n", duration)
 }
