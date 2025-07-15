@@ -25,6 +25,9 @@ run-onnx-go: model/model.onnx
 	go run cmd/onnx-go/main.go
 
 run-onnx-py: model/model.onnx
+	go run cmd/onnx-py/main.go
+
+run-python: model/model.onnx
 	cd py && uv run main.py
 
 run-coreml-go: jina-v2
